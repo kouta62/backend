@@ -4,27 +4,34 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # 手動で実行できるようにする
+  workflow_dispatch: # 手動で実行するためのオプション
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # リポジトリをチェックアウト
       - uses: actions/checkout@v4
+
+      # Python バージョンの設定
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'
 
+      # 仮想環境の作成と依存関係のインストール
       - name: Install dependencies
         run: |
           python -m venv antenv
           source antenv/bin/activate
           pip install -r requirements.txt
 
+      # アーティファクトのパッケージ化
       - name: Package artifact
-        run: zip -r release.zip . -x "antenv/*"
+        run: |
+          zip -r release.zip . -x "antenv/*"
 
+      # アーティファクトをアップロード
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -35,11 +42,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      # Azure ログイン
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+
+      # アーティファクトのダウンロード
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
+      # Azure App Service にデプロイ
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
         with:
